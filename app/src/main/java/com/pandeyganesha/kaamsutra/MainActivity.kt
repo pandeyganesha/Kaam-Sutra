@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
+data class Task(val name: String, val points: Int, val isDone: Boolean = false)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             KaamSutraTheme {
+                var allTasks by remember { mutableStateOf(listOf<Task>()) }
                 var showDialog by remember { mutableStateOf(false) }
                 Scaffold(modifier = Modifier.fillMaxSize(),
                     floatingActionButton = {
@@ -51,18 +53,25 @@ class MainActivity : ComponentActivity() {
                     }) { innerPadding ->
                     Column(modifier = Modifier.padding(innerPadding)) {
                         TotalMoneyCard(0)
-                        TaskRow(
-                            taskName = "testing",
-                            points = 8,
-                            isChecked = false,
-                            onCheckedChange = {},
-                            onEditClick = {},
-                            onDeleteClick = {}
-                        )
+                        allTasks.forEach { task ->
+                            TaskRow(
+                                taskName = task.name,
+                                points = task.points,
+                                isChecked = task.isDone,
+                                onCheckedChange = {},
+                                onEditClick = {},
+                                onDeleteClick = {}
+                            )
+                        }
                     }
                 }
                 if (showDialog){
-                    AddTaskDialog(onDismiss = {showDialog = false})
+                    AddTaskDialog(
+                        onDismiss = {showDialog = false},
+                        onConfirm = {taskName, points ->
+                            allTasks = allTasks + Task(taskName, points)
+                            showDialog = false
+                        })
                 }
             }
         }
@@ -71,27 +80,35 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AddTaskDialog(
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onConfirm: (taskName: String, points: Int) -> Unit,
 ) {
+    var taskName by remember { mutableStateOf("") }
+    var pointsText by remember { mutableStateOf("") }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Task")},
         text = {
             Column {
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
+                    value = taskName,
+                    onValueChange = { taskName = it },
                     label = {Text("Task Name")}
                 )
                 OutlinedTextField(
-                    value = "",
-                    onValueChange = {},
+                    value = pointsText,
+                    onValueChange = { pointsText = it },
                     label = { Text("Points") }
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = {}) {
+
+            TextButton(onClick = {
+                val points = pointsText.toIntOrNull() ?: 0
+                onConfirm(taskName, points)
+            }) {
                 Text("Confirm")
             }
         },
