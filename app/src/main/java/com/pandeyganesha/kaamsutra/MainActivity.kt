@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Card
+import androidx.compose.material3.MaterialTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,17 +40,38 @@ class MainActivity : ComponentActivity() {
                             Icon(Icons.Default.Add, contentDescription = "Add Task")
                         }
                     }) { innerPadding ->
-                    TaskRow(
-                        taskName = "testing",
-                        points = 8,
-                        isChecked = false,
-                        onCheckedChange = {},
-                        onEditClick = {},
-                        onDeleteClick = {},
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    Column(modifier = Modifier.padding(innerPadding)) {
+                        TotalMoneyCard(0)
+                        TaskRow(
+                            taskName = "testing",
+                            points = 8,
+                            isChecked = false,
+                            onCheckedChange = {},
+                            onEditClick = {},
+                            onDeleteClick = {}
+                        )
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun TotalMoneyCard(totalMoney: Int, modifier: Modifier = Modifier)
+{
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(text = "Total Money")
+            Text(text = "$totalMoney", style = MaterialTheme.typography.headlineMedium)
         }
     }
 }
