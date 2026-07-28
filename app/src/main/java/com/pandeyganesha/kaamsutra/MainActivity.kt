@@ -27,6 +27,14 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -34,9 +42,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             KaamSutraTheme {
+                var showDialog by remember { mutableStateOf(false) }
                 Scaffold(modifier = Modifier.fillMaxSize(),
                     floatingActionButton = {
-                        FloatingActionButton(onClick = {}) {
+                        FloatingActionButton(onClick = { showDialog = true}) {
                             Icon(Icons.Default.Add, contentDescription = "Add Task")
                         }
                     }) { innerPadding ->
@@ -52,9 +61,46 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
+                if (showDialog){
+                    AddTaskDialog(onDismiss = {showDialog = false})
+                }
             }
         }
     }
+}
+
+@Composable
+fun AddTaskDialog(
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add Task")},
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = "",
+                    onValueChange = {},
+                    label = {Text("Task Name")}
+                )
+                OutlinedTextField(
+                    value = "",
+                    onValueChange = {},
+                    label = { Text("Points") }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {}) {
+                Text("Confirm")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable
