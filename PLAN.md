@@ -68,3 +68,62 @@ Example for unbounded goal is to run 5km in 30 min. This is something I would wa
 Thinking of it, I realized that I might also want to upgrade unbounded goal to to time bounded. For these I have two options, either to delete existing goal and create new with time bound or treat both of them as same in our code, hence we can just give option to use to just upgrade it as same goal becomes time bounded. Still not sure if to treat both of them different or same.
 
 I think for now I can skip this point, because I will first implement the task logic in our code and will add support for Goals later. Since I know I will be treating both of them differently, I can work on them independently ( Another perk of keeping them separate )
+
+---
+
+### Next confusion: how do "done/not done" and "reset every day" actually work?
+My rough plan said: after every new day, reset all tasks to unchecked, and re-enable
+checking/unchecking to again add/subtract net worth. But the moment I said this out loud, it felt
+wrong. A "10,000 steps" done today is not the same event as "10,000 steps" done tomorrow — they're
+different occurrences of the same task. I don't want to *uncheck* anything each day — I want a
+fresh checklist to exist naturally, with every task starting unchecked by default, without any
+explicit reset step.
+
+That led me to a bigger realization: **changing the task list itself** (add/edit/delete a task)
+and **changing the state of a task on a given day** (done, not done, points earned) are two
+completely different kinds of operations, and I was conflating them into one entity.
+
+I reached for an analogy to explain this to myself: Docker images vs containers. The image
+(task definition) is the template — rarely changes. The container (a specific day's occurrence)
+is created *from* that image, and is temporary/instance-specific. I should never delete anything
+from the "database" outright — I should only ever append new records, like event-driven
+architecture — so that even if I remove a task from my active list later, the history of it being
+done on specific past days still exists, untouched.
+
+### Landing on the shape
+This gave me two entities instead of one:
+- **`TaskDefinition`** — the reusable template: `name`, `pointsDelta`, `recurrence`. Freely
+  editable/deletable, since it's just configuration.
+- **`TaskLog`** — one record per `(taskId, date)`: whether it was done, and the points awarded
+  (snapshotted, not recalculated later from the definition — so editing a task's points later
+  doesn't rewrite past history).
+
+"Is this task done today?" becomes something I **derive** by checking whether a `TaskLog` exists
+for today — not something I store as a flag and manually reset. If no log exists yet for today,
+it's simply unchecked, because that's the honest default — not because I actively unchecked it.
+Net worth becomes a sum computed from today's logs, not a separately stored number that could
+drift out of sync.
+
+### One more open question: what about mistakes — checking, unchecking, re-checking the same day?
+If I mis-tap a checkbox by accident, then uncheck it, then check it again later once actually
+done — should I record all of that as separate append-only events, or just keep one entry per
+day and overwrite it?
+
+Strict event sourcing says: append every toggle, never overwrite, keep the full trail. That's
+appealing for consistency, and would let me analyze things like "how often do I fumble this
+checkbox," but honestly, that's noise I don't care about — I only care what the final state was
+by the end of the day.
+
+So I decided on a middle ground: **within a single day, the log entry can be overwritten freely**
+(mistakes get corrected in place) — but **once a day has passed, that entry is frozen forever**,
+same as full event sourcing. This keeps the one guarantee that actually matters — past days never
+silently change when I edit today's settings or task list — while avoiding pointless storage
+noise from accidental taps.
+
+### Where this leaves me
+- Tasks and Goals: separate entities, Goals deferred until Task logic is proven out.
+- Task data: split into `TaskDefinition` (template, editable) and `TaskLog` (per-day record,
+  mutable only within the current day, immutable afterward).
+- Nothing is "reset" — everything is derived by querying the log against the current date.
+- Net worth, "is it done," and (later) streaks are all computed from logs, never stored as
+  separate fields that could drift out of sync.
