@@ -127,3 +127,23 @@ noise from accidental taps.
 - Nothing is "reset" — everything is derived by querying the log against the current date.
 - Net worth, "is it done," and (later) streaks are all computed from logs, never stored as
   separate fields that could drift out of sync.
+
+---
+30 July 2026 | 08:43
+On my 3rd or 4th of this project. I have decided to use AI as little as possible for my personal projects.
+It leaves me even dumber and more dependent on it. It is guiding the thought process.
+I first created this project a few days ago and without even writing a single line of code. Claude created and published it all within 4-5 hours. But I learnt nothing. Moreover I did not feel the sense of achievement at all. The project did not feel personal, it did not feel "Mine".
+
+Hence I deleted the repo and started fresh once again with a new Rule:
+> Don't let claude write even a single line for you. You can ask it, but you will have to manually make each change.
+
+And this rules actually helped. After 3 days, I have made very little progress when compared to the last shipped project. But I have learnt more and I know my project.
+
+But it is still sublty guiding my thought process, which I don't want. I want to be confused and then think of a solution instead of sharing my process with it and it then serving the answers directly.
+If I don't understand something it is saying and accept to do, then starts the trap. Then for each next step I become more dependent on it.
+It again sucks me in.
+
+Hence new rule.
+> Only ask conceptual question without giving it the context to my project. But don't ask questions which solves my actual project issues. Instead go out and search google. Like we used to do.
+
+Let us see how it goes.
