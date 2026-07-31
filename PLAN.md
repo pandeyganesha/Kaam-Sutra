@@ -147,3 +147,9 @@ Hence new rule.
 > Only ask conceptual question without giving it the context to my project. But don't ask questions which solves my actual project issues. Instead go out and search google. Like we used to do.
 
 Let us see how it goes.
+
+---
+31 July 2026 | 22:13
+
+Implented Rooms ( new concept I have learnt ( not quite while, but was able to work with it )) today.
+We create Entity which represents table, we create Dao, which shows interface to the table. And have an AppProvider that actually handles the database. ( How this all works, I don't know, but it works )
