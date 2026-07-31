@@ -34,8 +34,67 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import androidx.room.Dao
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
+import android.content.Context
+import androidx.room.Room
+import java.util.UUID
+import androidx.room.Index
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlin.collections.emptyList
+import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.launch
 
-data class Task(val name: String, val points: Int, val isDone: Boolean = false)
+
+object DatabaseProvider {
+    @Volatile private var instance: AppDatabase? = null
+
+    fun getDatabase(context: Context): AppDatabase {
+        return instance ?: synchronized(this) {
+            instance ?: Room.databaseBuilder(
+                context.applicationContext,
+                AppDatabase::class.java,
+                "app_database"
+            ).build().also { instance = it }
+        }
+    }
+}
+
+@Entity(tableName = "net_worth")
+data class NetWorth(
+    @PrimaryKey val id: String = UUID.randomUUID().toString(),
+    val netWorth: Int
+)
+@Dao
+interface NetWorthDao {
+    @Insert
+    suspend fun saveNetWorth(netWorth: NetWorth)
+
+    @Query("Select * from net_worth WHERE id = 0 LIMIT 1")
+    fun getNetWorth(): Flow<NetWorth?>
+}
+
+@Entity(tableName = "task", indices = [Index(value = ["name"], unique = true)])
+data class Task(
+    @PrimaryKey val id: String = UUID.randomUUID().toString(),
+    val name: String,
+    val worthDelta: Int,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Dao
+interface TaskDao {
+    @Insert(onConflict = OnConflictStrategy.ABORT)
+    suspend fun insertTask(task: Task)
+
+    @Query("SELECT * from task order by createdAt")
+    fun getTasks(): Flow<List<Task>>
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,8 +102,13 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             KaamSutraTheme {
-                var allTasks by remember { mutableStateOf(listOf<Task>()) }
+                val db = DatabaseProvider.getDatabase(applicationContext)
+                val taskDao = db.taskDao()
+                val coroutineScope = rememberCoroutineScope()
+                val allTasks by taskDao.getTasks().collectAsState(initial = emptyList())
                 var showDialog by remember { mutableStateOf(false) }
+
+
                 Scaffold(modifier = Modifier.fillMaxSize(),
                     floatingActionButton = {
                         FloatingActionButton(onClick = { showDialog = true}) {
@@ -52,12 +116,12 @@ class MainActivity : ComponentActivity() {
                         }
                     }) { innerPadding ->
                     Column(modifier = Modifier.padding(innerPadding)) {
-                        TotalMoneyCard(0)
+                        NetWorthCard(0)
                         allTasks.forEach { task ->
                             TaskRow(
                                 taskName = task.name,
-                                points = task.points,
-                                isChecked = task.isDone,
+                                worth = task.worthDelta,
+                                isChecked = false,
                                 onCheckedChange = {},
                                 onEditClick = {},
                                 onDeleteClick = {}
@@ -68,8 +132,10 @@ class MainActivity : ComponentActivity() {
                 if (showDialog){
                     AddTaskDialog(
                         onDismiss = {showDialog = false},
-                        onConfirm = {taskName, points ->
-                            allTasks = allTasks + Task(taskName, points)
+                        onConfirm = { taskName, worth ->
+                            coroutineScope.launch {
+                                taskDao.insertTask(Task(name = taskName, worthDelta = worth))
+                            }
                             showDialog = false
                         })
                 }
@@ -81,10 +147,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun AddTaskDialog(
     onDismiss: () -> Unit,
-    onConfirm: (taskName: String, points: Int) -> Unit,
+    onConfirm: (taskName: String, worth: Int) -> Unit,
 ) {
     var taskName by remember { mutableStateOf("") }
-    var pointsText by remember { mutableStateOf("") }
+    var worthText by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -97,8 +163,8 @@ fun AddTaskDialog(
                     label = {Text("Task Name")}
                 )
                 OutlinedTextField(
-                    value = pointsText,
-                    onValueChange = { pointsText = it },
+                    value = worthText,
+                    onValueChange = { worthText = it },
                     label = { Text("Points") }
                 )
             }
@@ -106,8 +172,8 @@ fun AddTaskDialog(
         confirmButton = {
 
             TextButton(onClick = {
-                val points = pointsText.toIntOrNull() ?: 0
-                onConfirm(taskName, points)
+                val worth = worthText.toIntOrNull() ?: 0
+                onConfirm(taskName, worth)
             }) {
                 Text("Confirm")
             }
@@ -121,7 +187,7 @@ fun AddTaskDialog(
 }
 
 @Composable
-fun TotalMoneyCard(totalMoney: Int, modifier: Modifier = Modifier)
+fun NetWorthCard(totalMoney: Int, modifier: Modifier = Modifier)
 {
     Card(
         modifier = Modifier
@@ -142,7 +208,7 @@ fun TotalMoneyCard(totalMoney: Int, modifier: Modifier = Modifier)
 @Composable
 fun TaskRow(
     taskName: String,
-    points: Int,
+    worth: Int,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     onEditClick: () -> Unit,
@@ -166,7 +232,7 @@ fun TaskRow(
                 .padding(horizontal = 8.dp)
         ) {
             Text(text = taskName)
-            Text(text = "$points pts")
+            Text(text = "$worth pts")
         }
         IconButton(onClick = onEditClick) {
             Icon(Icons.Default.Edit, contentDescription = "Edit")
