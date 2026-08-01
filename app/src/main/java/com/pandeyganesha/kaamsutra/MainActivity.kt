@@ -42,11 +42,13 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 import android.content.Context
+import android.util.Log
 import androidx.room.Room
 import java.util.UUID
 import androidx.room.Index
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlin.collections.emptyList
+import androidx.room.Update
 import androidx.compose.runtime.collectAsState
 import kotlinx.coroutines.launch
 
@@ -92,8 +94,14 @@ interface TaskDao {
     @Insert(onConflict = OnConflictStrategy.ABORT)
     suspend fun insertTask(task: Task)
 
+    @Update
+    suspend fun updateTask(task: Task)
+
     @Query("SELECT * from task order by createdAt")
     fun getTasks(): Flow<List<Task>>
+
+    @Query("Select * from task where id = :taskId")
+    fun getTask(taskId: String): Flow<Task?>
 }
 
 class MainActivity : ComponentActivity() {
@@ -107,6 +115,7 @@ class MainActivity : ComponentActivity() {
                 val coroutineScope = rememberCoroutineScope()
                 val allTasks by taskDao.getTasks().collectAsState(initial = emptyList())
                 var showDialog by remember { mutableStateOf(false) }
+                var taskBeingEdited by remember { mutableStateOf<Task?>(null)}
 
 
                 Scaffold(modifier = Modifier.fillMaxSize(),
@@ -123,18 +132,34 @@ class MainActivity : ComponentActivity() {
                                 worth = task.worthDelta,
                                 isChecked = false,
                                 onCheckedChange = {},
-                                onEditClick = {},
+                                onEditClick = {
+                                    taskBeingEdited = task},
                                 onDeleteClick = {}
                             )
                         }
                     }
                 }
+                taskBeingEdited?.let { task ->
+                    AddTaskDialog(
+                        taskName = task.name,
+                        worthDelta = task.worthDelta.toString(),
+                        onDismiss = {
+                            taskBeingEdited = null },
+                        onConfirm = { taskName, worthDelta ->
+                            coroutineScope.launch {
+                                taskDao.updateTask(Task(id = task.id, name = taskName, worthDelta = worthDelta))
+                                taskBeingEdited = null
+                            }
+                        }
+                    )
+
+                }
                 if (showDialog){
                     AddTaskDialog(
                         onDismiss = {showDialog = false},
-                        onConfirm = { taskName, worth ->
+                        onConfirm = { taskName, worthDelta ->
                             coroutineScope.launch {
-                                taskDao.insertTask(Task(name = taskName, worthDelta = worth))
+                                taskDao.insertTask(Task(name = taskName, worthDelta = worthDelta))
                             }
                             showDialog = false
                         })
@@ -146,11 +171,13 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AddTaskDialog(
+    taskName: String = "",
+    worthDelta: String = "",
     onDismiss: () -> Unit,
-    onConfirm: (taskName: String, worth: Int) -> Unit,
+    onConfirm: (taskName: String, worthDelta: Int) -> Unit,
 ) {
-    var taskName by remember { mutableStateOf("") }
-    var worthText by remember { mutableStateOf("") }
+    var taskName by remember { mutableStateOf(taskName) }
+    var worthDeltaText by remember { mutableStateOf(worthDelta) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -163,17 +190,17 @@ fun AddTaskDialog(
                     label = {Text("Task Name")}
                 )
                 OutlinedTextField(
-                    value = worthText,
-                    onValueChange = { worthText = it },
-                    label = { Text("Points") }
+                    value = worthDeltaText,
+                    onValueChange = { worthDeltaText = it },
+                    label = { Text("Worth") }
                 )
             }
         },
         confirmButton = {
 
             TextButton(onClick = {
-                val worth = worthText.toIntOrNull() ?: 0
-                onConfirm(taskName, worth)
+                val worthDelta = worthDeltaText.toIntOrNull() ?: 0
+                onConfirm(taskName, worthDelta)
             }) {
                 Text("Confirm")
             }
