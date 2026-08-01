@@ -48,8 +48,9 @@ import java.util.UUID
 import androidx.room.Index
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlin.collections.emptyList
-import androidx.room.Update
 import androidx.compose.runtime.collectAsState
+import androidx.room.Delete
+import androidx.room.Update
 import kotlinx.coroutines.launch
 
 
@@ -59,10 +60,10 @@ object DatabaseProvider {
     fun getDatabase(context: Context): AppDatabase {
         return instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(
-                context.applicationContext,
-                AppDatabase::class.java,
-                "app_database"
-            ).build().also { instance = it }
+                        context.applicationContext,
+                        AppDatabase::class.java,
+                        "app_database"
+                    ).fallbackToDestructiveMigration(false).build().also { instance = it }
         }
     }
 }
@@ -86,7 +87,8 @@ data class Task(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val name: String,
     val worthDelta: Int,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val isActive: Boolean = true
 )
 
 @Dao
@@ -97,11 +99,17 @@ interface TaskDao {
     @Update
     suspend fun updateTask(task: Task)
 
+    @Update
+    suspend fun deleteTask(task: Task)
+
     @Query("SELECT * from task order by createdAt")
     fun getTasks(): Flow<List<Task>>
 
     @Query("Select * from task where id = :taskId")
     fun getTask(taskId: String): Flow<Task?>
+
+    @Query("SELECT * from task where isActive = 1 order by createdAt")
+    fun getActiveTasks(): Flow<List<Task>>
 }
 
 class MainActivity : ComponentActivity() {
@@ -113,7 +121,7 @@ class MainActivity : ComponentActivity() {
                 val db = DatabaseProvider.getDatabase(applicationContext)
                 val taskDao = db.taskDao()
                 val coroutineScope = rememberCoroutineScope()
-                val allTasks by taskDao.getTasks().collectAsState(initial = emptyList())
+                val activeTasks by taskDao.getActiveTasks().collectAsState(initial = emptyList())
                 var showDialog by remember { mutableStateOf(false) }
                 var taskBeingEdited by remember { mutableStateOf<Task?>(null)}
 
@@ -126,7 +134,7 @@ class MainActivity : ComponentActivity() {
                     }) { innerPadding ->
                     Column(modifier = Modifier.padding(innerPadding)) {
                         NetWorthCard(0)
-                        allTasks.forEach { task ->
+                        activeTasks.forEach { task ->
                             TaskRow(
                                 taskName = task.name,
                                 worth = task.worthDelta,
@@ -134,7 +142,11 @@ class MainActivity : ComponentActivity() {
                                 onCheckedChange = {},
                                 onEditClick = {
                                     taskBeingEdited = task},
-                                onDeleteClick = {}
+                                onDeleteClick = {
+                                    coroutineScope.launch {
+                                        taskDao.deleteTask(Task(id = task.id, name = task.name, worthDelta = task.worthDelta, isActive = false))
+                                    }
+                                }
                             )
                         }
                     }
