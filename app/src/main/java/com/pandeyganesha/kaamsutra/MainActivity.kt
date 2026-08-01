@@ -45,11 +45,10 @@ import android.content.Context
 import android.util.Log
 import androidx.room.Room
 import java.util.UUID
-import androidx.room.Index
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlin.collections.emptyList
 import androidx.compose.runtime.collectAsState
-import androidx.room.Delete
+import androidx.compose.ui.graphics.Color
 import androidx.room.Update
 import kotlinx.coroutines.launch
 
@@ -82,7 +81,7 @@ interface NetWorthDao {
     fun getNetWorth(): Flow<NetWorth?>
 }
 
-@Entity(tableName = "task", indices = [Index(value = ["name"], unique = true)])
+@Entity(tableName = "task")
 data class Task(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val name: String,
@@ -122,8 +121,10 @@ class MainActivity : ComponentActivity() {
                 val taskDao = db.taskDao()
                 val coroutineScope = rememberCoroutineScope()
                 val activeTasks by taskDao.getActiveTasks().collectAsState(initial = emptyList())
+                val existingTaskNames = remember(activeTasks) { activeTasks.map { it.name }.toSet() }
                 var showDialog by remember { mutableStateOf(false) }
                 var taskBeingEdited by remember { mutableStateOf<Task?>(null)}
+                var deleteTask by remember {mutableStateOf<Task?>(null)}
 
 
                 Scaffold(modifier = Modifier.fillMaxSize(),
@@ -140,21 +141,29 @@ class MainActivity : ComponentActivity() {
                                 worth = task.worthDelta,
                                 isChecked = false,
                                 onCheckedChange = {},
-                                onEditClick = {
-                                    taskBeingEdited = task},
-                                onDeleteClick = {
-                                    coroutineScope.launch {
-                                        taskDao.deleteTask(Task(id = task.id, name = task.name, worthDelta = task.worthDelta, isActive = false))
-                                    }
-                                }
+                                onEditClick = { taskBeingEdited = task },
+                                onDeleteClick = { deleteTask = task }
                             )
                         }
                     }
+                }
+                deleteTask?.let { task ->
+                    DeleteTaskDialog(
+                        taskName = task.name,
+                        onDismiss = { deleteTask = null },
+                        onConfirm = {
+                            coroutineScope.launch {
+                                taskDao.deleteTask(Task(id = task.id, name = task.name, worthDelta = task.worthDelta, isActive = false))
+                                deleteTask = null
+                            }
+                        }
+                    )
                 }
                 taskBeingEdited?.let { task ->
                     AddTaskDialog(
                         taskName = task.name,
                         worthDelta = task.worthDelta.toString(),
+                        existingTaskNames = existingTaskNames - task.name,
                         onDismiss = {
                             taskBeingEdited = null },
                         onConfirm = { taskName, worthDelta ->
@@ -168,7 +177,8 @@ class MainActivity : ComponentActivity() {
                 }
                 if (showDialog){
                     AddTaskDialog(
-                        onDismiss = {showDialog = false},
+                        existingTaskNames = existingTaskNames,
+                        onDismiss = { showDialog = false },
                         onConfirm = { taskName, worthDelta ->
                             coroutineScope.launch {
                                 taskDao.insertTask(Task(name = taskName, worthDelta = worthDelta))
@@ -185,11 +195,13 @@ class MainActivity : ComponentActivity() {
 fun AddTaskDialog(
     taskName: String = "",
     worthDelta: String = "",
+    existingTaskNames: Set<String>,
     onDismiss: () -> Unit,
     onConfirm: (taskName: String, worthDelta: Int) -> Unit,
 ) {
-    var taskName by remember { mutableStateOf(taskName) }
+    var taskNameText by remember { mutableStateOf(taskName) }
     var worthDeltaText by remember { mutableStateOf(worthDelta) }
+    val isDuplicate = taskNameText in existingTaskNames
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -197,10 +209,16 @@ fun AddTaskDialog(
         text = {
             Column {
                 OutlinedTextField(
-                    value = taskName,
-                    onValueChange = { taskName = it },
+                    value = taskNameText,
+                    onValueChange = { taskNameText = it },
                     label = {Text("Task Name")}
                 )
+                if (isDuplicate) {
+                    Text(
+                        text = "Task name already exists",
+                        color = Color.Red
+                    )
+                }
                 OutlinedTextField(
                     value = worthDeltaText,
                     onValueChange = { worthDeltaText = it },
@@ -211,9 +229,10 @@ fun AddTaskDialog(
         confirmButton = {
 
             TextButton(onClick = {
-                val worthDelta = worthDeltaText.toIntOrNull() ?: 0
-                onConfirm(taskName, worthDelta)
-            }) {
+                onConfirm(taskNameText, worthDeltaText.toIntOrNull() ?: 0)
+            },
+                enabled = !isDuplicate
+            ) {
                 Text("Confirm")
             }
         },
@@ -226,7 +245,30 @@ fun AddTaskDialog(
 }
 
 @Composable
-fun NetWorthCard(totalMoney: Int, modifier: Modifier = Modifier)
+fun DeleteTaskDialog(
+    taskName: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+){
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Let '$taskName' from your tasks?") },
+        confirmButton = {
+
+            TextButton(onClick = { onConfirm()}) {
+                Text("Yes")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Nooooo!")
+            }
+        }
+    )
+}
+
+@Composable
+fun NetWorthCard(netWorth: Int, modifier: Modifier = Modifier)
 {
     Card(
         modifier = Modifier
@@ -238,8 +280,8 @@ fun NetWorthCard(totalMoney: Int, modifier: Modifier = Modifier)
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            Text(text = "Total Money")
-            Text(text = "$totalMoney", style = MaterialTheme.typography.headlineMedium)
+            Text(text = "Net Worth")
+            Text(text = "$netWorth", style = MaterialTheme.typography.headlineMedium)
         }
     }
 }
