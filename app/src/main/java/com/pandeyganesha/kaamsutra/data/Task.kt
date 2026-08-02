@@ -29,7 +29,7 @@ interface TaskDao {
     suspend fun updateTask(task: Task)
 
     @Update
-    suspend fun deleteTask(task: Task)
+    suspend fun softDeleteTask(task: Task)
 
     @Query("SELECT * from task order by createdAt")
     fun getTasks(): Flow<List<Task>>

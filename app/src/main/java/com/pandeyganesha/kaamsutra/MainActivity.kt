@@ -28,6 +28,8 @@ import com.pandeyganesha.kaamsutra.ui.components.AddTaskDialog
 import com.pandeyganesha.kaamsutra.ui.components.DeleteTaskDialog
 import com.pandeyganesha.kaamsutra.ui.components.NetWorthCard
 import com.pandeyganesha.kaamsutra.ui.components.TaskRow
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 
 
 class MainActivity : ComponentActivity() {
@@ -36,89 +38,85 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             KaamSutraTheme {
-                val db = DatabaseProvider.getDatabase(applicationContext)
-                val taskDao = db.taskDao()
-                val coroutineScope = rememberCoroutineScope()
-                val activeTasks by taskDao.getActiveTasks().collectAsState(initial = emptyList())
-                val existingTaskNames = remember(activeTasks) { activeTasks.map { it.name }.toSet() }
-                var showDialog by remember { mutableStateOf(false) }
-                var taskBeingEdited by remember { mutableStateOf<Task?>(null)}
-                var deleteTask by remember {mutableStateOf<Task?>(null)}
-
-
-                Scaffold(modifier = Modifier.fillMaxSize(),
-                    floatingActionButton = {
-                        FloatingActionButton(onClick = { showDialog = true}) {
-                            Icon(Icons.Default.Add, contentDescription = "Add Task")
-                        }
-                    }) { innerPadding ->
-                    Column(modifier = Modifier.padding(innerPadding)) {
-                        NetWorthCard(0)
-                        activeTasks.forEach { task ->
-                            TaskRow(
-                                taskName = task.name,
-                                worth = task.worthDelta,
-                                isChecked = false,
-                                onCheckedChange = {},
-                                onEditClick = { taskBeingEdited = task },
-                                onDeleteClick = { deleteTask = task }
-                            )
-                        }
-                    }
-                }
-                deleteTask?.let { task ->
-                    DeleteTaskDialog(
-                        taskName = task.name,
-                        onDismiss = { deleteTask = null },
-                        onConfirm = {
-                            coroutineScope.launch {
-                                taskDao.deleteTask(
-                                    Task(
-                                        id = task.id,
-                                        name = task.name,
-                                        worthDelta = task.worthDelta,
-                                        isActive = false
-                                    )
-                                )
-                                deleteTask = null
-                            }
-                        }
-                    )
-                }
-                taskBeingEdited?.let { task ->
-                    AddTaskDialog(
-                        taskName = task.name,
-                        worthDelta = task.worthDelta.toString(),
-                        existingTaskNames = existingTaskNames - task.name,
-                        onDismiss = {
-                            taskBeingEdited = null },
-                        onConfirm = { taskName, worthDelta ->
-                            coroutineScope.launch {
-                                taskDao.updateTask(
-                                    Task(
-                                        id = task.id,
-                                        name = taskName,
-                                        worthDelta = worthDelta
-                                    )
-                                )
-                                taskBeingEdited = null
-                            }
-                        }
-                    )
-
-                }
-                if (showDialog){
-                    AddTaskDialog(
-                        existingTaskNames = existingTaskNames,
-                        onDismiss = { showDialog = false },
-                        onConfirm = { taskName, worthDelta ->
-                            coroutineScope.launch {
-                                taskDao.insertTask(Task(name = taskName, worthDelta = worthDelta))
-                            }
-                            showDialog = false
-                        })
-                }
+                KaamSutraApp()
             }
         }
+    }
+}
+
+@Composable
+fun KaamSutraApp() {
+
+    val context = LocalContext.current
+    val db = DatabaseProvider.getDatabase(context.applicationContext)
+    val taskDao = db.taskDao()
+    val coroutineScope = rememberCoroutineScope()
+    val activeTasks by taskDao.getActiveTasks().collectAsState(initial = emptyList())
+    val existingTaskNames = remember(activeTasks) { activeTasks.map { it.name }.toSet() }
+    var showDialog by remember { mutableStateOf(false) }
+    var taskBeingEdited by remember { mutableStateOf<Task?>(null) }
+    var deleteTask by remember { mutableStateOf<Task?>(null) }
+
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showDialog = true }) {
+                Icon(Icons.Default.Add, contentDescription = "Add Task")
+            }
+        }) { innerPadding ->
+        Column(modifier = Modifier.padding(innerPadding)) {
+            NetWorthCard(0)
+            activeTasks.forEach { task ->
+                TaskRow(
+                    taskName = task.name,
+                    worthDelta = task.worthDelta,
+                    isChecked = false,
+                    onCheckedChange = {},
+                    onEditClick = { taskBeingEdited = task },
+                    onDeleteClick = { deleteTask = task }
+                )
+            }
+        }
+    }
+    deleteTask?.let { task ->
+        DeleteTaskDialog(
+            taskName = task.name,
+            onDismiss = { deleteTask = null },
+            onConfirm = {
+                coroutineScope.launch {
+                    taskDao.softDeleteTask(task.copy(isActive = false))
+                    deleteTask = null
+                }
+            }
+        )
+    }
+    taskBeingEdited?.let { task ->
+        AddTaskDialog(
+            taskName = task.name,
+            worthDelta = task.worthDelta.toString(),
+            existingTaskNames = existingTaskNames - task.name,
+            onDismiss = {
+                taskBeingEdited = null
+            },
+            onConfirm = { taskName, worthDelta ->
+                coroutineScope.launch {
+                    taskDao.updateTask(task.copy(name = taskName, worthDelta = worthDelta))
+                    taskBeingEdited = null
+                }
+            }
+        )
+
+    }
+    if (showDialog) {
+        AddTaskDialog(
+            existingTaskNames = existingTaskNames,
+            onDismiss = { showDialog = false },
+            onConfirm = { taskName, worthDelta ->
+                coroutineScope.launch {
+                    taskDao.insertTask(Task(name = taskName, worthDelta = worthDelta))
+                }
+                showDialog = false
+            })
     }
 }
