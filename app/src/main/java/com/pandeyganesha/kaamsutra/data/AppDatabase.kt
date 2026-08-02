@@ -1,4 +1,4 @@
-package com.pandeyganesha.kaamsutra
+package com.pandeyganesha.kaamsutra.data
 
 import androidx.room.Database
 import androidx.room.RoomDatabase

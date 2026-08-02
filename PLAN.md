@@ -153,3 +153,13 @@ Let us see how it goes.
 
 Implented Rooms ( new concept I have learnt ( not quite while, but was able to work with it )) today.
 We create Entity which represents table, we create Dao, which shows interface to the table. And have an AppProvider that actually handles the database. ( How this all works, I don't know, but it works )
+
+---
+
+More features that I feel I need for myself
+- It should also host my to do task, as I want all of the things I want to do in the same location.
+- Tasks can hold description, because I felt like adding description to my tasks. Like, for the handstand Goal. I want to write notes, about the process and all.
+- While writing above point, I felt, Goals can have sub-goals as well. Like chest-to-wall handstand for 1 min can be a checkpoint in learning handstand.
+- Can also add option to attach photos to the goals/tasks.
+- Need to set notification as well.
+- Need to calculate correct `worth` for each task and goal. Can't just give random worth values as I suit. They must be logical and must represent my goals and importance.

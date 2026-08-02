@@ -8,108 +8,27 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import com.pandeyganesha.kaamsutra.ui.theme.KaamSutraTheme
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.room.Entity
-import androidx.room.PrimaryKey
-import androidx.room.Dao
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.Query
-import kotlinx.coroutines.flow.Flow
-import android.content.Context
-import android.util.Log
-import androidx.room.Room
-import java.util.UUID
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlin.collections.emptyList
 import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.graphics.Color
-import androidx.room.Update
+import com.pandeyganesha.kaamsutra.data.DatabaseProvider
+import com.pandeyganesha.kaamsutra.data.Task
 import kotlinx.coroutines.launch
+import com.pandeyganesha.kaamsutra.ui.components.AddTaskDialog
+import com.pandeyganesha.kaamsutra.ui.components.DeleteTaskDialog
+import com.pandeyganesha.kaamsutra.ui.components.NetWorthCard
+import com.pandeyganesha.kaamsutra.ui.components.TaskRow
 
-
-object DatabaseProvider {
-    @Volatile private var instance: AppDatabase? = null
-
-    fun getDatabase(context: Context): AppDatabase {
-        return instance ?: synchronized(this) {
-            instance ?: Room.databaseBuilder(
-                        context.applicationContext,
-                        AppDatabase::class.java,
-                        "app_database"
-                    ).fallbackToDestructiveMigration(false).build().also { instance = it }
-        }
-    }
-}
-
-@Entity(tableName = "net_worth")
-data class NetWorth(
-    @PrimaryKey val id: String = UUID.randomUUID().toString(),
-    val netWorth: Int
-)
-@Dao
-interface NetWorthDao {
-    @Insert
-    suspend fun saveNetWorth(netWorth: NetWorth)
-
-    @Query("Select * from net_worth WHERE id = 0 LIMIT 1")
-    fun getNetWorth(): Flow<NetWorth?>
-}
-
-@Entity(tableName = "task")
-data class Task(
-    @PrimaryKey val id: String = UUID.randomUUID().toString(),
-    val name: String,
-    val worthDelta: Int,
-    val createdAt: Long = System.currentTimeMillis(),
-    val isActive: Boolean = true
-)
-
-@Dao
-interface TaskDao {
-    @Insert(onConflict = OnConflictStrategy.ABORT)
-    suspend fun insertTask(task: Task)
-
-    @Update
-    suspend fun updateTask(task: Task)
-
-    @Update
-    suspend fun deleteTask(task: Task)
-
-    @Query("SELECT * from task order by createdAt")
-    fun getTasks(): Flow<List<Task>>
-
-    @Query("Select * from task where id = :taskId")
-    fun getTask(taskId: String): Flow<Task?>
-
-    @Query("SELECT * from task where isActive = 1 order by createdAt")
-    fun getActiveTasks(): Flow<List<Task>>
-}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -153,7 +72,14 @@ class MainActivity : ComponentActivity() {
                         onDismiss = { deleteTask = null },
                         onConfirm = {
                             coroutineScope.launch {
-                                taskDao.deleteTask(Task(id = task.id, name = task.name, worthDelta = task.worthDelta, isActive = false))
+                                taskDao.deleteTask(
+                                    Task(
+                                        id = task.id,
+                                        name = task.name,
+                                        worthDelta = task.worthDelta,
+                                        isActive = false
+                                    )
+                                )
                                 deleteTask = null
                             }
                         }
@@ -168,7 +94,13 @@ class MainActivity : ComponentActivity() {
                             taskBeingEdited = null },
                         onConfirm = { taskName, worthDelta ->
                             coroutineScope.launch {
-                                taskDao.updateTask(Task(id = task.id, name = taskName, worthDelta = worthDelta))
+                                taskDao.updateTask(
+                                    Task(
+                                        id = task.id,
+                                        name = taskName,
+                                        worthDelta = worthDelta
+                                    )
+                                )
                                 taskBeingEdited = null
                             }
                         }
@@ -188,155 +120,5 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-    }
-}
-
-@Composable
-fun AddTaskDialog(
-    taskName: String = "",
-    worthDelta: String = "",
-    existingTaskNames: Set<String>,
-    onDismiss: () -> Unit,
-    onConfirm: (taskName: String, worthDelta: Int) -> Unit,
-) {
-    var taskNameText by remember { mutableStateOf(taskName) }
-    var worthDeltaText by remember { mutableStateOf(worthDelta) }
-    val isDuplicate = taskNameText in existingTaskNames
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add Task")},
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = taskNameText,
-                    onValueChange = { taskNameText = it },
-                    label = {Text("Task Name")}
-                )
-                if (isDuplicate) {
-                    Text(
-                        text = "Task name already exists",
-                        color = Color.Red
-                    )
-                }
-                OutlinedTextField(
-                    value = worthDeltaText,
-                    onValueChange = { worthDeltaText = it },
-                    label = { Text("Worth") }
-                )
-            }
-        },
-        confirmButton = {
-
-            TextButton(onClick = {
-                onConfirm(taskNameText, worthDeltaText.toIntOrNull() ?: 0)
-            },
-                enabled = !isDuplicate
-            ) {
-                Text("Confirm")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-fun DeleteTaskDialog(
-    taskName: String,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit,
-){
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Let '$taskName' from your tasks?") },
-        confirmButton = {
-
-            TextButton(onClick = { onConfirm()}) {
-                Text("Yes")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Nooooo!")
-            }
-        }
-    )
-}
-
-@Composable
-fun NetWorthCard(netWorth: Int, modifier: Modifier = Modifier)
-{
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
-        Column(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(text = "Net Worth")
-            Text(text = "$netWorth", style = MaterialTheme.typography.headlineMedium)
-        }
-    }
-}
-
-@Composable
-fun TaskRow(
-    taskName: String,
-    worth: Int,
-    isChecked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit,
-    modifier: Modifier = Modifier
-){
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-
-    ){
-        Checkbox(
-            checked=isChecked,
-            onCheckedChange=onCheckedChange
-        )
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 8.dp)
-        ) {
-            Text(text = taskName)
-            Text(text = "$worth pts")
-        }
-        IconButton(onClick = onEditClick) {
-            Icon(Icons.Default.Edit, contentDescription = "Edit")
-        }
-        IconButton(onClick = onDeleteClick) {
-            Icon(Icons.Default.Delete, contentDescription = "Delete")
-        }
-    }
-
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    KaamSutraTheme {
-        Greeting("Android")
     }
 }
