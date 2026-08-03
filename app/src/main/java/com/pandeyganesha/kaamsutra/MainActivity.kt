@@ -30,6 +30,8 @@ import com.pandeyganesha.kaamsutra.ui.components.NetWorthCard
 import com.pandeyganesha.kaamsutra.ui.components.TaskRow
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import java.time.LocalDate
+import com.pandeyganesha.kaamsutra.data.TaskLog
 
 
 class MainActivity : ComponentActivity() {
@@ -50,13 +52,16 @@ fun KaamSutraApp() {
     val context = LocalContext.current
     val db = DatabaseProvider.getDatabase(context.applicationContext)
     val taskDao = db.taskDao()
+    val taskLogDao = db.taskLogDao()
     val coroutineScope = rememberCoroutineScope()
     val activeTasks by taskDao.getActiveTasks().collectAsState(initial = emptyList())
     val existingTaskNames = remember(activeTasks) { activeTasks.map { it.name }.toSet() }
     var showDialog by remember { mutableStateOf(false) }
     var taskBeingEdited by remember { mutableStateOf<Task?>(null) }
     var deleteTask by remember { mutableStateOf<Task?>(null) }
-
+    val netWorth by taskLogDao.getNetWorth().collectAsState(initial = 0)
+    val today = remember { LocalDate.now().toString() }
+    val allTaskLogsForToday  by taskLogDao.getLogsForDate(today).collectAsState(initial = emptyList())
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -66,13 +71,24 @@ fun KaamSutraApp() {
             }
         }) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            NetWorthCard(0)
+            NetWorthCard(netWorth ?: 0)
             activeTasks.forEach { task ->
                 TaskRow(
                     taskName = task.name,
                     worthDelta = task.worthDelta,
-                    isChecked = false,
-                    onCheckedChange = {},
+                    isChecked = allTaskLogsForToday.any { it.taskId == task.id && it.done },
+                    onCheckedChange = { checked ->
+                        coroutineScope.launch {
+                            taskLogDao.upsertLog(
+                                TaskLog(
+                                    taskId = task.id,
+                                    date = today,
+                                    done = checked,
+                                    pointsAwarded = task.worthDelta
+                                )
+                            )
+                        }
+                    },
                     onEditClick = { taskBeingEdited = task },
                     onDeleteClick = { deleteTask = task }
                 )
