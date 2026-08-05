@@ -8,8 +8,12 @@ import androidx.work.WorkerParameters
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import android.Manifest
+import android.icu.util.Calendar
 import androidx.work.CoroutineWorker
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import java.time.LocalDate
@@ -74,10 +78,27 @@ fun scheduleTestNotification(context: Context) {
         "NOTIFICATION_TITLE" to "Test Reminder",
         "NOTIFICATION_MSG" to "This is a placeholder notification."
     )
-    val workRequest = OneTimeWorkRequestBuilder<NotificationWorker>()
-        .setInputData(data)
-        .setInitialDelay(10, TimeUnit.SECONDS)
+    val workRequest = PeriodicWorkRequestBuilder<NotificationWorker>(1, TimeUnit.DAYS)
+        .setInitialDelay(calculateDelayUntil(19, 0), TimeUnit.MILLISECONDS)
         .build()
 
-    WorkManager.getInstance(context).enqueue(workRequest)
+    WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+        "Task Reminder",
+        ExistingPeriodicWorkPolicy.KEEP,
+        workRequest
+    )
+}
+
+private fun calculateDelayUntil(hour: Int, minute: Int): Long {
+    val now = Calendar.getInstance()
+    val target = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, hour)
+        set(Calendar.MINUTE, minute)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+        if (before(now)){
+            add(Calendar.DAY_OF_YEAR, 1)
+        }
+    }
+    return target.timeInMillis - now.timeInMillis
 }
