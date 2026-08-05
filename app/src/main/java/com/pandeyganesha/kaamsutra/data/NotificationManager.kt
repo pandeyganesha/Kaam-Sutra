@@ -10,11 +10,8 @@ import android.content.pm.PackageManager
 import android.Manifest
 import android.app.PendingIntent
 import android.content.Intent
-import android.icu.util.Calendar
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
@@ -101,18 +98,4 @@ fun scheduleTestNotification(context: Context) {
         ExistingPeriodicWorkPolicy.KEEP,
         workRequest
     )
-}
-
-private fun calculateDelayUntil(hour: Int, minute: Int): Long {
-    val now = Calendar.getInstance()
-    val target = Calendar.getInstance().apply {
-        set(Calendar.HOUR_OF_DAY, hour)
-        set(Calendar.MINUTE, minute)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
-        if (before(now)){
-            add(Calendar.DAY_OF_YEAR, 1)
-        }
-    }
-    return target.timeInMillis - now.timeInMillis
 }

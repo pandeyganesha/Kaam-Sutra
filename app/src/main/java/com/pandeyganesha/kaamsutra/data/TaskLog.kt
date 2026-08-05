@@ -22,11 +22,8 @@ data class TaskLog(
 @Dao
 interface TaskLogDao {
 
-    @Insert(onConflict = OnConflictStrategy.ABORT)
-    suspend fun insertTask(taskLog: TaskLog)
-
-    @Update
-    suspend fun updateTask(taskLog: TaskLog)
+    @Insert
+    suspend fun insertTaskLog(taskLog: TaskLog)
 
     @Query("SELECT SUM(pointsAwarded) FROM task_log WHERE done = 1")
     fun getNetWorth(): Flow<Int?>

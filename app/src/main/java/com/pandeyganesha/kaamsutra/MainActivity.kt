@@ -36,6 +36,7 @@ import android.Manifest
 import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import com.pandeyganesha.kaamsutra.data.scheduleTestNotification
+import com.pandeyganesha.kaamsutra.data.scheduleMissedTaskSettlement
 
 class MainActivity : ComponentActivity() {
     private val requestPermissionLauncher =
@@ -48,6 +49,7 @@ class MainActivity : ComponentActivity() {
             requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
         scheduleTestNotification(applicationContext)
+        scheduleMissedTaskSettlement(applicationContext)
         enableEdgeToEdge()
         setContent {
             KaamSutraTheme {
