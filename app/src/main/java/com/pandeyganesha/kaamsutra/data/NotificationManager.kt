@@ -8,6 +8,8 @@ import androidx.work.WorkerParameters
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import android.Manifest
+import android.app.PendingIntent
+import android.content.Intent
 import android.icu.util.Calendar
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -16,6 +18,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.pandeyganesha.kaamsutra.MainActivity
 import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 
@@ -57,6 +60,16 @@ class NotificationWorker(
         }
         notificationManager.createNotificationChannel(channel)
 
+        val intent = Intent(applicationContext, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            applicationContext,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         // Build the notification
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(com.pandeyganesha.kaamsutra.R.mipmap.ic_launcher) // System icon for illustration
@@ -64,6 +77,7 @@ class NotificationWorker(
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
 
 
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
