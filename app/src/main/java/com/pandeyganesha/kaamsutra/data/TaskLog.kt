@@ -45,4 +45,7 @@ interface TaskLogDao {
         val logToSave = if (existing != null) newLog.copy(id = existing.id) else newLog
         insertLog(logToSave)
     }
+
+    @Query("SELECT * FROM task_log WHERE date = :date")
+    suspend fun getLogsForDateOnce(date: String): List<TaskLog>
 }

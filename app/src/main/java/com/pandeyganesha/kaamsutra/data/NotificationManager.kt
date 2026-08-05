@@ -4,30 +4,36 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import androidx.core.app.NotificationCompat
-import androidx.work.Worker
 import androidx.work.WorkerParameters
 import androidx.core.content.ContextCompat
 import android.content.pm.PackageManager
 import android.Manifest
+import androidx.work.CoroutineWorker
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 
 class NotificationWorker(
     private val context: Context,
     workerParams: WorkerParameters
-) : Worker(context, workerParams) {
+) : CoroutineWorker(context, workerParams) {
 
-    override fun doWork(): Result {
-        // 1. Get arguments passed to the worker
-        val title = inputData.getString("NOTIFICATION_TITLE") ?: "Task Complete"
-        val message = inputData.getString("NOTIFICATION_MSG") ?: "Your background task finished!"
+    override suspend fun doWork(): Result {
+        val db = DatabaseProvider.getDatabase(applicationContext)
+        val taskDao = db.taskDao()
+        val taskLogDao = db.taskLogDao()
+        val today = LocalDate.now().toString()
+        val activeTasks = taskDao.getActiveTasksOnce()
+        val todayLogs = taskLogDao.getLogsForDateOnce(today)
 
-        // 2. Trigger the notification
-        showNotification(title, message)
+        val undoneTasks = activeTasks.filter { task -> todayLogs.none {it.taskId == task.id && it.done} }
 
-        // 3. Indicate whether the work finished successfully
+        if (undoneTasks.isNotEmpty()) {
+            val names = undoneTasks.joinToString(", ") { it.name }
+            showNotification("Pending Tasks", names)
+        }
         return Result.success()
     }
 
@@ -40,7 +46,7 @@ class NotificationWorker(
         // Create the NotificationChannel if using Android 8.0 (Oreo) or higher
         val channel = NotificationChannel(
             channelId,
-            "Background Tasks",
+            "Remaining Tasks",
             NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
             description = "Notifications triggered by scheduled background jobs"

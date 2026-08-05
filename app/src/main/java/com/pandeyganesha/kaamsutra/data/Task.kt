@@ -39,4 +39,7 @@ interface TaskDao {
 
     @Query("SELECT * from task where isActive = 1 order by createdAt")
     fun getActiveTasks(): Flow<List<Task>>
+
+    @Query("SELECT * FROM task WHERE isActive = 1")
+    suspend fun getActiveTasksOnce(): List<Task>
 }
