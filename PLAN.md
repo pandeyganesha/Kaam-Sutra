@@ -179,3 +179,27 @@ But then we had the edge case of worth being zero. But what kind of tasks can ha
 
 Hence we get rid of `done` col as now we can compress this value in `pointsAwarded` only.
 I will make think like calculating `netWorth` quite easy. Just sum over the rows for `pointsAwarded` and it must represent the true value.
+
+---
+
+I have two things in my mind to proceed with
+1. To add history option
+2. To add goals section
+
+History is lookup on the existing data and goals are something that will generate data.
+Goals are the part of core functionality of the application. Hence I think I must go for goals first. The principle here followed is, "Lay the foundation first, then the building".
+
+---
+
+Now the questions arises, how to show goals. One the same page with Tasks in one part and Goals in another.
+Or have a always on top horizontal nav bar at the bottom ( or somewhere ) and have different sections there.
+I don't want collapsable sidebar for sure, that feel to many features, and I want to keep it minimal.
+
+We can use `+` as single source to add task or goal. But how to show goals is still a question.
+
+For now, to me, a nav var on the bottom feels better. That nav var and net worth remains on the top of all screens ( two screens for now ), and tasks list and goals list change.
+
+One idea I got is this, we create three screens, home screen, tasks screen and goals screen instead of keep net worth on top for each screen.
+On home screen we will only have net worth for now, but can add insights and other actionable items. And tasks will keep tasks, and goals will have goals.
+
+This seems nice design choice ( Just like popular application, nothing new ). Let us proceed with this. Later we can also add profile section in that nav var as well.
