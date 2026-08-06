@@ -163,3 +163,19 @@ More features that I feel I need for myself
 - Can also add option to attach photos to the goals/tasks.
 - Need to set notification as well.
 - Need to calculate correct `worth` for each task and goal. Can't just give random worth values as I suit. They must be logical and must represent my goals and importance.
+- One another feature I can think of is to visualize my progress ( other than charts ) like github/leetcode green profile. It looks cool.
+
+---
+
+6 Aug 2026 | 8:56
+
+I hit a bug today.
+When I pressed check button on a task, we insert a row into the database with `done=1` and `pointsAwarded=5` ( 5 is just for example ). If we uncheck it, we mark it `done=0` but do not update the `pointsAwarded`, which still claims to have awarded 5 points for a task we have not done.
+We could easily mitigate this bug by always checking `done` with `pointsAwarded`. But the question is, is this right approach?
+These two values are logically tied, and must always be in sync to represent the truth. But we have not enforced that.
+And if we always have to adjust each of them together, I made me think, are both of the col truly needed? if yes, then we enforce the sync, if not, we get rid of the one.
+If we make `pointsAwarded` signed integer, then if it is greater than 0 -> Task is done, if less than 0 -> task is not done.
+But then we had the edge case of worth being zero. But what kind of tasks can have 0 value? It made no sense to me. `worth=0` means it bears no significance in your life, and if so, there is no point of tracking it everyday. Hence I decided to enforce a rule that a task can never have 0 worth.
+
+Hence we get rid of `done` col as now we can compress this value in `pointsAwarded` only.
+I will make think like calculating `netWorth` quite easy. Just sum over the rows for `pointsAwarded` and it must represent the true value.

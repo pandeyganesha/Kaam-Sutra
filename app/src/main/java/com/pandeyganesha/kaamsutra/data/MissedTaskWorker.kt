@@ -25,7 +25,7 @@ class MissedTaskWorker(
         val yesterdaysLogs = taskLogDao.getLogsForDateOnce(dayJustEnded)
 
         val missedTasks = activeTasks.filter { task ->
-            yesterdaysLogs.none { it.taskId == task.id && it.done }
+            yesterdaysLogs.none { it.taskId == task.id && it.pointsAwarded > 0 }
         }
 
         missedTasks.forEach { task ->
@@ -33,7 +33,6 @@ class MissedTaskWorker(
                 TaskLog(
                     taskId = task.id,
                     date = dayJustEnded,
-                    done = false,
                     pointsAwarded = -task.worthDelta
                 )
             )

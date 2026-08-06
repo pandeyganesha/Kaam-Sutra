@@ -32,7 +32,7 @@ class NotificationWorker(
         val activeTasks = taskDao.getActiveTasksOnce()
         val todayLogs = taskLogDao.getLogsForDateOnce(today)
 
-        val undoneTasks = activeTasks.filter { task -> todayLogs.none {it.taskId == task.id && it.done} }
+        val undoneTasks = activeTasks.filter { task -> todayLogs.none {it.taskId == task.id && it.pointsAwarded > 0} }
 
         if (undoneTasks.isNotEmpty()) {
             val names = undoneTasks.joinToString(", ") { it.name }

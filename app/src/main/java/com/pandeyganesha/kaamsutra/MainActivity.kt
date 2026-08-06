@@ -89,15 +89,14 @@ fun KaamSutraApp() {
                 TaskRow(
                     taskName = task.name,
                     worthDelta = task.worthDelta,
-                    isChecked = allTaskLogsForToday.any { it.taskId == task.id && it.done },
+                    isChecked = allTaskLogsForToday.any { it.taskId == task.id && it.pointsAwarded > 0 },
                     onCheckedChange = { checked ->
                         coroutineScope.launch {
                             taskLogDao.upsertLog(
                                 TaskLog(
                                     taskId = task.id,
                                     date = today,
-                                    done = checked,
-                                    pointsAwarded = task.worthDelta
+                                    pointsAwarded = if (checked) task.worthDelta else 0
                                 )
                             )
                         }

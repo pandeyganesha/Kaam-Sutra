@@ -14,7 +14,6 @@ import androidx.room.Update
 data class TaskLog(
     @PrimaryKey val id: String = UUID.randomUUID().toString(),
     val taskId: String,
-    val done: Boolean,
     val date: String,
     val pointsAwarded: Int
 )
@@ -25,7 +24,7 @@ interface TaskLogDao {
     @Insert
     suspend fun insertTaskLog(taskLog: TaskLog)
 
-    @Query("SELECT SUM(pointsAwarded) FROM task_log WHERE done = 1")
+    @Query("SELECT SUM(pointsAwarded) FROM task_log")
     fun getNetWorth(): Flow<Int?>
 
     @Query("SELECT * from task_log where date = :date")

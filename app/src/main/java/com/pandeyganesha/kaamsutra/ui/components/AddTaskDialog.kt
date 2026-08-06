@@ -25,6 +25,7 @@ fun AddTaskDialog(
     var taskNameText by remember { mutableStateOf(taskName) }
     var worthDeltaText by remember { mutableStateOf(worthDelta) }
     val isDuplicate = taskNameText in existingTaskNames
+    val isZero = worthDeltaText.toIntOrNull() == 0
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -47,6 +48,12 @@ fun AddTaskDialog(
                     onValueChange = { worthDeltaText = it },
                     label = { Text("Worth") }
                 )
+                if (isZero){
+                    Text(
+                        text = "Zero? That's not worth tracking",
+                        color = Color.Red
+                    )
+                }
             }
         },
         confirmButton = {
@@ -54,7 +61,7 @@ fun AddTaskDialog(
             TextButton(onClick = {
                 onConfirm(taskNameText, worthDeltaText.toIntOrNull() ?: 0)
             },
-                enabled = !isDuplicate
+                enabled = !isDuplicate && !isZero && taskNameText.isNotBlank() && worthDeltaText.isNotBlank()
             ) {
                 Text("Confirm")
             }
