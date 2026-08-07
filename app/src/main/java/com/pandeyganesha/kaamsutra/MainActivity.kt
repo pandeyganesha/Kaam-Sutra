@@ -28,6 +28,7 @@ import com.pandeyganesha.kaamsutra.ui.components.AddTaskDialog
 import com.pandeyganesha.kaamsutra.ui.components.DeleteTaskDialog
 import com.pandeyganesha.kaamsutra.ui.components.NetWorthCard
 import com.pandeyganesha.kaamsutra.ui.components.TaskRow
+import com.pandeyganesha.kaamsutra.ui.components.Screen
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import java.time.LocalDate
@@ -37,6 +38,8 @@ import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import com.pandeyganesha.kaamsutra.data.scheduleTestNotification
 import com.pandeyganesha.kaamsutra.data.scheduleMissedTaskSettlement
+import com.pandeyganesha.kaamsutra.ui.components.AppBottomBar
+
 
 class MainActivity : ComponentActivity() {
     private val requestPermissionLauncher =
@@ -59,6 +62,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
+
 @Composable
 fun KaamSutraApp() {
 
@@ -75,14 +80,19 @@ fun KaamSutraApp() {
     val netWorth by taskLogDao.getNetWorth().collectAsState(initial = 0)
     val today = remember { LocalDate.now().toString() }
     val allTaskLogsForToday  by taskLogDao.getLogsForDate(today).collectAsState(initial = emptyList())
+    var currentScreen by remember {mutableStateOf(Screen.HOME)}
+
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Task")
-            }
-        }) { innerPadding ->
+        bottomBar = {
+            AppBottomBar(
+                currentScreen = currentScreen,
+                onScreenSelected = { currentScreen = it },
+                onAddClick = { showDialog = true }
+            )
+        },
+        modifier = Modifier.fillMaxSize()
+    ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
             NetWorthCard(netWorth ?: 0)
             activeTasks.forEach { task ->
