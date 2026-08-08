@@ -10,10 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.Modifier
 import com.pandeyganesha.kaamsutra.ui.theme.KaamSutraTheme
-import androidx.compose.material3.Icon
-import androidx.compose.material.icons.Icons
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -39,6 +35,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.pandeyganesha.kaamsutra.data.scheduleTestNotification
 import com.pandeyganesha.kaamsutra.data.scheduleMissedTaskSettlement
 import com.pandeyganesha.kaamsutra.ui.components.AppBottomBar
+import com.pandeyganesha.kaamsutra.ui.components.HomeScreen
+import com.pandeyganesha.kaamsutra.ui.components.TasksScreen
 
 
 class MainActivity : ComponentActivity() {
@@ -76,7 +74,7 @@ fun KaamSutraApp() {
     val existingTaskNames = remember(activeTasks) { activeTasks.map { it.name }.toSet() }
     var showDialog by remember { mutableStateOf(false) }
     var taskBeingEdited by remember { mutableStateOf<Task?>(null) }
-    var deleteTask by remember { mutableStateOf<Task?>(null) }
+    var taskBeingDeleted by remember { mutableStateOf<Task?>(null) }
     val netWorth by taskLogDao.getNetWorth().collectAsState(initial = 0)
     val today = remember { LocalDate.now().toString() }
     val allTaskLogsForToday  by taskLogDao.getLogsForDate(today).collectAsState(initial = emptyList())
@@ -91,40 +89,46 @@ fun KaamSutraApp() {
                 onAddClick = { showDialog = true }
             )
         },
-        modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding)) {
-            NetWorthCard(netWorth ?: 0)
-            activeTasks.forEach { task ->
-                TaskRow(
-                    taskName = task.name,
-                    worthDelta = task.worthDelta,
-                    isChecked = allTaskLogsForToday.any { it.taskId == task.id && it.pointsAwarded > 0 },
-                    onCheckedChange = { checked ->
-                        coroutineScope.launch {
-                            taskLogDao.upsertLog(
-                                TaskLog(
-                                    taskId = task.id,
-                                    date = today,
-                                    pointsAwarded = if (checked) task.worthDelta else 0
-                                )
+        when (currentScreen) {
+            Screen.HOME -> HomeScreen(
+                netWorth = netWorth ?:0,
+                modifier = Modifier.padding(innerPadding)
+            )
+            Screen.TASKS -> TasksScreen(
+                activeTasks = activeTasks,
+                allTaskLogsForToday = allTaskLogsForToday,
+                onCheckedChange = { checked, task ->
+                    coroutineScope.launch {
+                        taskLogDao.upsertLog(
+                            TaskLog(
+                                taskId = task.id,
+                                date = today,
+                                pointsAwarded = if (checked) task.worthDelta else 0
                             )
-                        }
-                    },
-                    onEditClick = { taskBeingEdited = task },
-                    onDeleteClick = { deleteTask = task }
-                )
+                        )
+                    }
+                },
+                onEditClicked = { task -> taskBeingEdited = task },
+                onDeleteClicked = { task -> taskBeingDeleted = task},
+                modifier = Modifier.padding(innerPadding)
+            )
+            Screen.GOALS -> {
+                // placeholder for now
+            }
+            Screen.SETTINGS -> {
+                // placeholder for now
             }
         }
     }
-    deleteTask?.let { task ->
+    taskBeingDeleted?.let { task ->
         DeleteTaskDialog(
             taskName = task.name,
-            onDismiss = { deleteTask = null },
+            onDismiss = { taskBeingDeleted = null },
             onConfirm = {
                 coroutineScope.launch {
                     taskDao.softDeleteTask(task.copy(isActive = false))
-                    deleteTask = null
+                    taskBeingDeleted = null
                 }
             }
         )
