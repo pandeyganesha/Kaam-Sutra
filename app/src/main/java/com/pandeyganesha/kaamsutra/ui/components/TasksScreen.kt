@@ -6,10 +6,14 @@ import androidx.compose.ui.Modifier
 import com.pandeyganesha.kaamsutra.data.Task
 import com.pandeyganesha.kaamsutra.data.TaskLog
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.Alignment
+
 
 @Composable
 fun TasksScreen(activeTasks: List<Task>,
@@ -20,11 +24,19 @@ fun TasksScreen(activeTasks: List<Task>,
                 modifier: Modifier
                 ) {
     Column(modifier = modifier.fillMaxSize()) {
-//        Text(
-//            text = "Tasks",
-//            style = MaterialTheme.typography.headlineSmall,
-//            modifier = Modifier.padding(start = 8.dp, top = 20.dp, bottom = 15.dp)
-//        )
+        Row(
+            // Added Row to match the left margin for "Tasks" heading with checkbox
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ){
+            Text(
+                text = "Tasks",
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
         activeTasks.forEach { task ->
             TaskRow(
                 taskName = task.name,
